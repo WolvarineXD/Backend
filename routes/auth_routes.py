@@ -23,7 +23,7 @@ def generate_otp(length: int = 6) -> str:
 
 @router.post("/signup/init")
 async def signup_init(user: UserSignupInit):
-    if not user.email.strip().lower().endswith("@webknot.in"):
+    if not user.email.strip().lower().endswith("@gmail.com"):
         raise HTTPException(status_code=400, detail="Only WebKnot Gmail addresses are allowed.")
 
     if not is_strong_password(user.password):
