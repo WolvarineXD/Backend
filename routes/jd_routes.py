@@ -24,13 +24,37 @@ async def submit_jd(
         "user_id": ObjectId(user_id),
         "job_title": jd.job_title,
         "job_description": jd.job_description,
-        "skills": jd.skills
+        "skills": jd.skills,
+        "is_draft": False  # Explicitly marking as final
     }
 
     result = await jd_collection.insert_one(jd_doc)
     return {"message": "JD saved successfully", "jd_id": str(result.inserted_id)}
 
-# ✅ NEW: Get all JDs for the logged-in user
+# ✅ NEW: Save JD as a draft
+@router.post("/draft")
+async def save_draft_jd(
+    jd: JDInput,
+    credentials: HTTPAuthorizationCredentials = Security(security)
+):
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    user_id = payload.get("user_id")
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    jd_doc = {
+        "user_id": ObjectId(user_id),
+        "job_title": jd.job_title,
+        "job_description": jd.job_description,
+        "skills": jd.skills,
+        "is_draft": True
+    }
+
+    result = await jd_collection.insert_one(jd_doc)
+    return {"message": "Draft saved successfully", "jd_id": str(result.inserted_id)}
+
 @router.get("/history")
 async def get_jd_history(credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
@@ -47,10 +71,12 @@ async def get_jd_history(credentials: HTTPAuthorizationCredentials = Security(se
             "jd_id": str(jd["_id"]),
             "job_title": jd["job_title"],
             "job_description": jd["job_description"],
-            "skills": jd["skills"]
+            "skills": jd["skills"],
+            "is_draft": jd.get("is_draft", False)
         })
 
     return {"history": history}
+
 @router.put("/update/{jd_id}")
 async def update_jd(
     jd_id: str,
