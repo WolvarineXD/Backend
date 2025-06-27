@@ -8,16 +8,11 @@ from db import users_collection, otp_collection
 from utils import hash_password, verify_password, create_access_token, send_email_otp, decode_access_token
 from bson import ObjectId
 
-# 🔒 Import for rate limiting
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.decorator import limiter
+# ✅ Import limiter from main.py instead of creating new one
+from main import limiter
 
 router = APIRouter(prefix="/auth")
 security = HTTPBearer()
-
-# ✅ Add rate limiter instance (re-use the same as in main.py)
-limiter = Limiter(key_func=get_remote_address)
 
 # ✅ Password strength validator
 def is_strong_password(password: str) -> bool:
@@ -105,7 +100,6 @@ async def login(request: Request, user: UserLogin):
     }
 
 
-# ✅ NEW: Fetch current user profile
 @router.get("/me")
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
