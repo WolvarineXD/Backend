@@ -25,4 +25,4 @@ app.include_router(jd_router)
 # ✅ Root health check endpoint
 @app.get("/")
 def root():
-    return {"message": "Login/Signup backend running"} add it here
+    return {"message": "Login/Signup backend running"} 
