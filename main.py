@@ -3,32 +3,11 @@ from routes.auth_routes import router as auth_router
 from routes.jd_routes import router as jd_router
 from fastapi.middleware.cors import CORSMiddleware
 
-# 🔐 Add SlowAPI for rate limiting
-from slowapi import Limiter
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-from fastapi.responses import JSONResponse
-from fastapi import Request
-
-# ✅ FastAPI App
 app = FastAPI(
     title="Resume Shortlister API",
     description="Backend API for login, JD submission, and scoring",
     version="1.0.0"
 )
-
-# ✅ Rate Limiting Configuration
-limiter = Limiter(key_func=get_remote_address)
-app.state.limiter = limiter
-app.add_middleware(SlowAPIMiddleware)
-
-@app.exception_handler(RateLimitExceeded)
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
-    return JSONResponse(
-        status_code=429,
-        content={"detail": "Too many requests. Please try again later."}
-    )
 
 # ✅ CORS for Vercel frontend (no trailing slash)
 app.add_middleware(
@@ -46,4 +25,4 @@ app.include_router(jd_router)
 # ✅ Root health check endpoint
 @app.get("/")
 def root():
-    return {"message": "Login/Signup backend running"}
+    return {"message": "Login/Signup backend running"} add it here
