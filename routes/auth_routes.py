@@ -1,12 +1,15 @@
 import re
 import random
 import string
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Security
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from models.user_model import UserSignupInit, UserVerifyOTP, UserLogin
 from db import users_collection, otp_collection
-from utils import hash_password, verify_password, create_access_token, send_email_otp
+from utils import hash_password, verify_password, create_access_token, send_email_otp, decode_access_token
+from bson import ObjectId
 
 router = APIRouter(prefix="/auth")
+security = HTTPBearer()
 
 # ✅ Password strength validator
 def is_strong_password(password: str) -> bool:
@@ -19,7 +22,6 @@ def is_strong_password(password: str) -> bool:
 # ✅ OTP generator
 def generate_otp(length: int = 6) -> str:
     return ''.join(random.choices(string.digits, k=length))
-
 
 @router.post("/signup/init")
 async def signup_init(user: UserSignupInit):
@@ -52,7 +54,6 @@ async def signup_init(user: UserSignupInit):
 
     return {"message": f"OTP sent to {user.email}. Please verify to complete signup."}
 
-
 @router.post("/signup/verify")
 async def verify_signup(data: UserVerifyOTP):
     record = await otp_collection.find_one({
@@ -73,7 +74,6 @@ async def verify_signup(data: UserVerifyOTP):
 
     return {"message": "Signup verified successfully. You can now login."}
 
-
 @router.post("/login")
 async def login(user: UserLogin):
     db_user = await users_collection.find_one({"email": user.email.strip().lower()})
@@ -88,4 +88,24 @@ async def login(user: UserLogin):
         "access_token": token,
         "name": db_user["name"],
         "user_id": str(db_user["_id"])
+    }
+
+# ✅ NEW: Fetch current user profile
+@router.get("/me")
+async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    user_id = payload.get("user_id")
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    user = await users_collection.find_one({"_id": ObjectId(user_id)}, {"password": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return {
+        "user_id": str(user["_id"]),
+        "name": user["name"],
+        "email": user["email"]
     }
