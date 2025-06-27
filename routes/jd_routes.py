@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Security
+from fastapi import APIRouter, HTTPException, Depends, Security, Path
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from models.jd_model import JDInput
 from utils import decode_access_token
@@ -25,13 +25,13 @@ async def submit_jd(
         "job_title": jd.job_title,
         "job_description": jd.job_description,
         "skills": jd.skills,
-        "is_draft": False  # Explicitly marking as final
+        "is_draft": False
     }
 
     result = await jd_collection.insert_one(jd_doc)
     return {"message": "JD saved successfully", "jd_id": str(result.inserted_id)}
 
-# ✅ NEW: Save JD as a draft
+
 @router.post("/draft")
 async def save_draft_jd(
     jd: JDInput,
@@ -55,6 +55,7 @@ async def save_draft_jd(
     result = await jd_collection.insert_one(jd_doc)
     return {"message": "Draft saved successfully", "jd_id": str(result.inserted_id)}
 
+
 @router.get("/history")
 async def get_jd_history(credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
@@ -76,6 +77,7 @@ async def get_jd_history(credentials: HTTPAuthorizationCredentials = Security(se
         })
 
     return {"history": history}
+
 
 @router.put("/update/{jd_id}")
 async def update_jd(
@@ -105,3 +107,27 @@ async def update_jd(
         raise HTTPException(status_code=404, detail="JD not found or no changes made")
 
     return {"message": "JD updated successfully"}
+
+
+# ✅ ✅ NEW: Delete a JD
+@router.delete("/delete/{jd_id}")
+async def delete_jd(
+    jd_id: str = Path(..., description="JD ID to delete"),
+    credentials: HTTPAuthorizationCredentials = Security(security)
+):
+    token = credentials.credentials
+    payload = decode_access_token(token)
+    user_id = payload.get("user_id")
+
+    if not user_id:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+    result = await jd_collection.delete_one({
+        "_id": ObjectId(jd_id),
+        "user_id": ObjectId(user_id)
+    })
+
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="JD not found")
+
+    return {"message": "JD deleted successfully"}
