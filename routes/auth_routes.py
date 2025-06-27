@@ -1,15 +1,12 @@
 import re
 import random
 import string
-from fastapi import APIRouter, HTTPException, Security, Request
+from fastapi import APIRouter, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from models.user_model import UserSignupInit, UserVerifyOTP, UserLogin
 from db import users_collection, otp_collection
 from utils import hash_password, verify_password, create_access_token, send_email_otp, decode_access_token
 from bson import ObjectId
-
-# ✅ Import limiter from main.py instead of creating new one
-from main import limiter
 
 router = APIRouter(prefix="/auth")
 security = HTTPBearer()
@@ -26,10 +23,8 @@ def is_strong_password(password: str) -> bool:
 def generate_otp(length: int = 6) -> str:
     return ''.join(random.choices(string.digits, k=length))
 
-
 @router.post("/signup/init")
-@limiter.limit("3/minute")  # ⏱ Limit signup OTP requests
-async def signup_init(request: Request, user: UserSignupInit):
+async def signup_init(user: UserSignupInit):
     if not user.email.strip().lower().endswith("@gmail.com"):
         raise HTTPException(status_code=400, detail="Only WebKnot Gmail addresses are allowed.")
 
@@ -59,10 +54,8 @@ async def signup_init(request: Request, user: UserSignupInit):
 
     return {"message": f"OTP sent to {user.email}. Please verify to complete signup."}
 
-
 @router.post("/signup/verify")
-@limiter.limit("5/minute")  # ⏱ Limit OTP verification attempts
-async def verify_signup(request: Request, data: UserVerifyOTP):
+async def verify_signup(data: UserVerifyOTP):
     record = await otp_collection.find_one({
         "email": data.email.strip().lower(),
         "otp": data.otp
@@ -81,10 +74,8 @@ async def verify_signup(request: Request, data: UserVerifyOTP):
 
     return {"message": "Signup verified successfully. You can now login."}
 
-
 @router.post("/login")
-@limiter.limit("2/minute")  # ⏱ Limit login attempts
-async def login(request: Request, user: UserLogin):
+async def login(user: UserLogin):
     db_user = await users_collection.find_one({"email": user.email.strip().lower()})
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid credentials.")
@@ -99,7 +90,7 @@ async def login(request: Request, user: UserLogin):
         "user_id": str(db_user["_id"])
     }
 
-
+# ✅ NEW: Fetch current user profile
 @router.get("/me")
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(security)):
     token = credentials.credentials
@@ -117,4 +108,4 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Security(
         "user_id": str(user["_id"]),
         "name": user["name"],
         "email": user["email"]
-    }
+    } 
