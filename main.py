@@ -12,7 +12,7 @@ app = FastAPI(
 # ✅ CORS for Vercel frontend (no trailing slash)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://resume-filter1-6p92.vercel.app/"],
+    allow_origins=["https://resume-filter1-6p92.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
