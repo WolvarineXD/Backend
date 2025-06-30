@@ -24,8 +24,8 @@ async def submit_jd(
         "user_id": ObjectId(user_id),
         "job_title": jd.job_title,
         "job_description": jd.job_description,
-        "skills": jd.skills,
-        "is_draft": False
+        "skills": jd.skills
+        
     }
 
     result = await jd_collection.insert_one(jd_doc)
