@@ -4,7 +4,7 @@ import string
 from fastapi import APIRouter, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from models.user_model import UserSignupInit, UserVerifyOTP, UserLogin
-from db import users_collection
+from db import users_collection,otp_collection
 from utils import hash_password, verify_password, create_access_token, send_email_otp, decode_access_token
 from bson import ObjectId
 
