@@ -20,4 +20,5 @@ db = client["resume_shortlister"]
 
 users_collection = db["users"]
 jd_collection = db["jd_history"]
+otp_collection = db["otp_temp"]
 
