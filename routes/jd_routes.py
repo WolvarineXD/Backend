@@ -8,7 +8,7 @@ import httpx
 
 router = APIRouter(prefix="/jd", tags=["JD"])
 security = HTTPBearer()
-AI_ENDPOINT = "https://n8n-resume-ai.onrender.com/webhook-test/e079777d-5e48-48bf-a883-9e56ec77d56f"
+AI_ENDPOINT = "https://n8n-resume-ai.onrender.com/webhook-test/a109fa4f-8418-4887-8583-1b6f03149cac"
 
 @router.post("/submit")
 async def submit_jd(
