@@ -4,9 +4,11 @@ from models.jd_model import JDInput
 from utils import decode_access_token
 from db import jd_collection
 from bson import ObjectId
+import httpx
 
 router = APIRouter(prefix="/jd", tags=["JD"])
 security = HTTPBearer()
+AI_ENDPOINT = "https://n8n-resume-ai.onrender.com/webhook-test/e94d8288-415f-4d3a-88ee-39b274922fb8"
 
 @router.post("/submit")
 async def submit_jd(
@@ -24,36 +26,32 @@ async def submit_jd(
         "user_id": ObjectId(user_id),
         "job_title": jd.job_title,
         "job_description": jd.job_description,
-        "skills": jd.skills
-        
-    }
-
-    result = await jd_collection.insert_one(jd_doc)
-    return {"message": "JD saved successfully", "jd_id": str(result.inserted_id)}
-
-
-@router.post("/draft")
-async def save_draft_jd(
-    jd: JDInput,
-    credentials: HTTPAuthorizationCredentials = Security(security)
-):
-    token = credentials.credentials
-    payload = decode_access_token(token)
-    user_id = payload.get("user_id")
-
-    if not user_id:
-        raise HTTPException(status_code=401, detail="Invalid token")
-
-    jd_doc = {
-        "user_id": ObjectId(user_id),
-        "job_title": jd.job_title,
-        "job_description": jd.job_description,
         "skills": jd.skills,
-        "is_draft": True
+        "resume_drive_link": jd.resume_drive_link
     }
 
     result = await jd_collection.insert_one(jd_doc)
-    return {"message": "Draft saved successfully", "jd_id": str(result.inserted_id)}
+    jd_id = str(result.inserted_id)
+
+    # ✅ Send to AI
+    try:
+        async with httpx.AsyncClient() as client:
+            ai_response = await client.post(AI_ENDPOINT, json={
+                "jd_id": jd_id,
+                "job_title": jd.job_title,
+                "job_description": jd.job_description,
+                "skills": jd.skills,
+                "resume_drive_link": jd.resume_drive_link
+            })
+            if ai_response.status_code != 200:
+                raise Exception(f"AI Error: {ai_response.text}")
+    except Exception as e:
+        print(f"⚠️ AI processing failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to process JD with AI")
+
+    return {"message": "JD saved successfully and sent to AI", "jd_id": jd_id}
+
+
 
 
 @router.get("/history")
@@ -73,7 +71,8 @@ async def get_jd_history(credentials: HTTPAuthorizationCredentials = Security(se
             "job_title": jd["job_title"],
             "job_description": jd["job_description"],
             "skills": jd["skills"],
-            "is_draft": jd.get("is_draft", False)
+            "resume_drive_link": jd.get("resume_drive_link")
+            
         })
 
     return {"history": history}
@@ -98,7 +97,8 @@ async def update_jd(
             "$set": {
                 "job_title": updated_data.job_title,
                 "job_description": updated_data.job_description,
-                "skills": updated_data.skills
+                "skills": updated_data.skills,
+                "resume_drive_link": updated_data.resume_drive_link  # ✅ added
             }
         }
     )
@@ -109,7 +109,6 @@ async def update_jd(
     return {"message": "JD updated successfully"}
 
 
-# ✅ ✅ NEW: Delete a JD
 @router.delete("/delete/{jd_id}")
 async def delete_jd(
     jd_id: str = Path(..., description="JD ID to delete"),
