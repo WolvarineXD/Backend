@@ -98,7 +98,7 @@ async def update_jd(
                 "job_title": updated_data.job_title,
                 "job_description": updated_data.job_description,
                 "skills": updated_data.skills,
-                "resume_drive_link": updated_data.resume_drive_link  # ✅ added
+                "resume_drive_link": updated_data.resume_drive_link
             }
         }
     )
@@ -106,7 +106,23 @@ async def update_jd(
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="JD not found or no changes made")
 
-    return {"message": "JD updated successfully"}
+    # ✅ Send updated JD to AI
+    try:
+        async with httpx.AsyncClient() as client:
+            ai_response = await client.post(AI_ENDPOINT, json={
+                "jd_id": jd_id,
+                "job_title": updated_data.job_title,
+                "job_description": updated_data.job_description,
+                "skills": updated_data.skills,
+                "resume_drive_link": updated_data.resume_drive_link
+            })
+            if ai_response.status_code != 200:
+                raise Exception(f"AI Error: {ai_response.text}")
+    except Exception as e:
+        print(f"⚠️ AI processing on update failed: {e}")
+        raise HTTPException(status_code=500, detail="Failed to update JD in AI")
+
+    return {"message": "JD updated successfully and sent to AI"}
 
 
 @router.delete("/delete/{jd_id}")
